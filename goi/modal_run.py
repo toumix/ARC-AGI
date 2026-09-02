@@ -46,8 +46,14 @@ def solve(split, name):
                        for c in ranked]}
 
 
-solve_cpu = app.function(image=image(False), cpu=2, timeout=3600)(solve)
-solve_gpu = app.function(image=image(True), gpu='T4', timeout=3600)(solve)
+@app.function(image=image(False), cpu=2, timeout=3600)
+def solve_cpu(split, name):
+    return solve(split, name)
+
+
+@app.function(image=image(True), gpu='T4', timeout=3600)
+def solve_gpu(split, name):
+    return solve(split, name)
 
 
 @app.local_entrypoint()
