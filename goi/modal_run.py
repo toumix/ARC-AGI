@@ -62,18 +62,20 @@ def solve_gpu(split, name):
 @app.local_entrypoint()
 def main(split: str = 'training', gpu: bool = False, limit: int = 0):
     from goi import run_fixpoint, survey
-    done = {p.stem for p in (run_fixpoint.RESULTS / split).glob('*.json')}
+    results = run_fixpoint.RESULTS / run_fixpoint.RUN / split
+    done = {p.stem for p in results.glob('*.json')}
     names = [name for name, task in survey.tasks(split)
              if survey.same_size(task) and name not in done]
     names = names[:limit] if limit else names
     print(f'{len(names)} tasks to run, {len(done)} already done')
     function = solve_gpu if gpu else solve_cpu
-    (run_fixpoint.RESULTS / split).mkdir(parents=True, exist_ok=True)
+    results.mkdir(parents=True, exist_ok=True)
     for name, result in function.starmap([(split, n) for n in names]):
         if 'error' in result:
             print(f'{name}: {result["error"]}')
             continue
-        with open(run_fixpoint.RESULTS / split / f'{name}.json', 'w') as f:
+        with open(results / f'{name}.json', 'w') as f:
             json.dump(result, f)
         print(f'{name}: {"solved" if result["solved"] else "missed"}')
-    print(f'{len(run_fixpoint.collect(split))} tasks in predictions/{split}.json')
+    print(f'{len(run_fixpoint.collect(split))} tasks in '
+          f'predictions/{run_fixpoint.RUN}-{split}.json')

@@ -30,24 +30,36 @@ from goi import fixpoint, survey  # noqa: E402
 RESULTS = pathlib.Path(__file__).resolve().parent / 'results'
 PREDICTIONS = pathlib.Path(__file__).resolve().parent / 'predictions'
 ROUNDS = (1, 4, 12)
-SEEDS = (0,)
+SEEDS = (0, 1)
+RUN = 'v2'
+
+
+def curriculum(pairs, seed):
+    """The cell fitted at each number of rounds, each from the last."""
+    params, out = None, {}
+    for rounds in ROUNDS:
+        params = fixpoint.fit(pairs, rounds, seed, start=params)
+        out[rounds] = params
+    return out
 
 
 def candidates(task):
     """Every (rounds, seed) fitted and scored by leave-one-demo-out."""
     demos = task['train']
     out = []
-    for rounds in ROUNDS:
-        for seed in SEEDS:
-            held_out = sum(
-                fixpoint.exact(fixpoint.fit(
-                    demos[:i] + demos[i + 1:], rounds, seed), [demo], rounds)
-                for i, demo in enumerate(demos)) if len(demos) > 1 else 0
-            params = fixpoint.fit(demos, rounds, seed)
+    for seed in SEEDS:
+        fitted = curriculum(demos, seed)
+        held = [curriculum(demos[:i] + demos[i + 1:], seed)
+                for i in range(len(demos))] if len(demos) > 1 else []
+        for rounds in ROUNDS:
             out.append({
-                'rounds': rounds, 'seed': seed, 'held_out': held_out,
-                'fit': fixpoint.exact(params, demos, rounds),
-                'grids': fixpoint.predict(params, task['test'], rounds)})
+                'rounds': rounds, 'seed': seed,
+                'held_out': sum(
+                    fixpoint.exact(params[rounds], [demo], rounds)
+                    for params, demo in zip(held, demos)),
+                'fit': fixpoint.exact(fitted[rounds], demos, rounds),
+                'grids': fixpoint.predict(
+                    fitted[rounds], task['test'], rounds)})
     return sorted(out, key=lambda c: (-c['held_out'], -c['fit'], c['rounds']))
 
 
@@ -68,7 +80,7 @@ def attempts(ranked, task):
 
 def solve(item):
     split, name = item
-    path = RESULTS / split / f'{name}.json'
+    path = RESULTS / RUN / split / f'{name}.json'
     if path.exists():
         return name
     with open(survey.DATA / split / f'{name}.json') as stream:
@@ -95,13 +107,13 @@ def solve(item):
 def collect(split):
     """Every finished task of the split as one predictions file."""
     out = {}
-    for path in sorted((RESULTS / split).glob('*.json')):
+    for path in sorted((RESULTS / RUN / split).glob('*.json')):
         with open(path) as stream:
             out[path.stem] = json.load(stream)['attempts']
     PREDICTIONS.mkdir(parents=True, exist_ok=True)
-    with open(PREDICTIONS / f'{split}.json', 'w') as stream:
-        json.dump({'split': split, 'family': 'fixpoint', 'attempts': out},
-                  stream)
+    with open(PREDICTIONS / f'{RUN}-{split}.json', 'w') as stream:
+        json.dump({'split': split, 'family': 'fixpoint', 'run': RUN,
+                   'attempts': out}, stream)
     return out
 
 
@@ -123,4 +135,4 @@ if __name__ == '__main__':
             for _ in pool.imap_unordered(solve, covered):
                 pass
     out = collect(arguments.split)
-    print(f'{len(out)} tasks written to predictions/{arguments.split}.json')
+    print(f'{len(out)} tasks written to predictions/{RUN}-{arguments.split}.json')

@@ -112,19 +112,22 @@ def step(params, state, x0, valid, hard):
 
 @functools.partial(jax.jit, static_argnames=('rounds', 'hard'))
 def run(params, x0, valid, rounds, hard):
-    """The automaton from the input, `rounds` rounds, soft or hard."""
+    """The automaton from the input: the state after every round."""
     def body(state, _):
-        return step(params, state, x0, valid, hard), None
-    state, _ = jax.lax.scan(body, x0, None, length=rounds)
-    return state
+        state = step(params, state, x0, valid, hard)
+        return state, state
+    _, states = jax.lax.scan(body, x0, None, length=rounds)
+    return states
 
 
 def loss(params, x0, target, valid, weight, rounds):
-    state = run(params, x0, valid, rounds, False)
-    logp = jnp.log(jnp.take_along_axis(state, target[..., None], -1)[..., 0]
-                   + 1e-6)
-    mask = valid * weight[:, None, None]
-    return -jnp.sum(logp * mask) / jnp.sum(mask)
+    """Deep supervision: the target is a fixpoint, so every round of the
+    second half is asked to show it, not the last one alone."""
+    states = run(params, x0, valid, rounds, False)[rounds // 2:]
+    logp = jnp.log(jnp.take_along_axis(
+        states, target[None, ..., None], -1)[..., 0] + 1e-6)
+    mask = (valid * weight[:, None, None])[None]
+    return -jnp.sum(logp * mask) / jnp.sum(mask) / len(states) * 1.
 
 
 @functools.partial(jax.jit, static_argnames=('rounds',))
@@ -142,10 +145,12 @@ def update(params, opt, data, count, rounds):
     return new_params, new_opt
 
 
-def fit(pairs, rounds, seed, steps=300, hidden=64, tail=50):
-    """Train the cell on the pairs, Polyak-averaging the last iterates."""
+def fit(pairs, rounds, seed, steps=600, hidden=64, tail=100, start=None):
+    """Train the cell on the pairs, Polyak-averaging the last iterates,
+    from `start` when given -- the cell fitted at fewer rounds, so that
+    the rounds are a curriculum rather than a restart."""
     data = pad(pairs)
-    params = init(jax.random.PRNGKey(seed), hidden)
+    params = start or init(jax.random.PRNGKey(seed), hidden)
     opt = {key: (jnp.zeros_like(value), jnp.zeros_like(value))
            for key, value in params.items()}
     mean = None
@@ -160,7 +165,7 @@ def fit(pairs, rounds, seed, steps=300, hidden=64, tail=50):
 def predict(params, pairs, rounds):
     """The hard automaton's output grids, cropped to each input's shape."""
     x0, _, valid, _ = pad(pairs)
-    state = np.asarray(run(params, x0, valid, rounds, True))
+    state = np.asarray(run(params, x0, valid, rounds, True)[-1])
     grids = []
     for k, pair in enumerate(pairs):
         height, width = np.asarray(pair['input']).shape
