@@ -298,3 +298,79 @@ using a mirror or a rotation, 1 of 37; of those using `objects`, 14 of
 local only up to their diameter. That is the next family, named: a wire
 that carries something along a row or a column, and one that folds a
 component.
+
+## Third round: the review, and the scale
+
+USER, 2026-09-02: *"review the previous attempt at ARC-AGI and scale it
+further"*. The review first, read against the committed results rather
+than the prose; every count below is one `python` expression over
+`results/`.
+
+**What holds.** The rays and mirrors this round adds were named by the
+previous round's own reading of the verifiers, `families.py`, so the
+wiring lesson stands as written. `verify.py` re-scores every committed
+prediction file to the number the README quotes, 26 / 2 / 3 / 32. The
+re-arc ceiling reads as claimed: the 16 tasks whose best candidate
+reproduces all 32 validation examples are solved 16 of 16, and the 17
+solved only with the training distribution against 11 only from the
+demos are exact.
+
+**What does not.**
+
+- *The training column of v2 was never finished*: 124 of 262 tasks ran,
+  `results/v2/training/`, and there is no `predictions/v2-training.json`,
+  so the "3 of 400 against 2" row of the second round has no training
+  counterpart. On the 124 that ran, v2 solves 15 where v1 solved 14 of
+  the same tasks; the lever that fitted more demos on the evaluation
+  split bought one task here too.
+- *One number in the re-arc paragraph is wrong*: "reproduces none of its
+  32 validation examples on 227 of 261 tasks" — the results say **192**
+  of 261 (245 reproduce fewer than all 32, and 214 reproduce none of the
+  task's own demos, which may be the count that was meant). The
+  conclusion survives, the sentence did not.
+- *The selection is a coin toss on most tasks*: on `v1/training`, the top
+  candidate is tied with another on `(held_out, fit)` on **167 of 262**
+  tasks, and the tie is broken by fewer rounds then by seed order. So
+  for two thirds of the split the two attempts were the one-round cell of
+  seed 0 and whatever came next, whatever the automaton did on the
+  held-out pixels. The pass@2 of the first two rounds is a lower bound
+  on the family by that much.
+- *The ensemble had no data lever on the evaluation split*: re-arc has no
+  generators there, and the round said "two to five demos are not a
+  training distribution" without trying the distribution every ARC entry
+  since 2020 has used, the symmetries of the square. A task rotated is
+  the same task.
+- *`modal_run.py` ran one container per task for ten minutes on two CPUs*,
+  which is what made v2's training column expensive enough to leave
+  unfinished. The cell is nine thousand parameters on a 30 × 30 canvas
+  that every task shares; nothing in it needs its own process.
+- Smaller: `modal_run.py` records no `seconds`, so only v1's local run
+  has timings; `features` sends the cell `colours[..., :1]` twice, once
+  inside the one-hot and once as "is background" — harmless; the fold of
+  a two-demo task trains on one demo, which is what leave-one-out means
+  there, but it is why `held_out` is at most 2 on 56 training tasks.
+
+**What this round does about it**, each a file:
+
+- `fixpoint.py` gains two kinds of port beside the eight neighbours,
+  `ports = 'all'`: four *mirrors*, the pixel across the grid's horizontal,
+  vertical, central and diagonal axis (the last only on a square grid),
+  and four *rays*, the first non-background colour seen along the row or
+  column in each direction, or none — a `lax.scan` along the axis, so a
+  line reaches its end in one round rather than thirty. Same cell, same
+  quotiented reads per port (colour, past-the-border, equal to the
+  centre, background), same relative writes; the interface goes from 124
+  to 228 features and 19 to 27 codes.
+- `dihedral.py`: the eight symmetries of the square as relabellings of a
+  task, and a vote. `batched.py`'s `pooled` kind fits the eight copies of
+  the demos as one training set, holds out every copy of a demo at once,
+  and undoes the eight predictions of the test input to vote. Sound
+  exactly when the rule is symmetric — a gravity that falls down is not
+  — which leave-one-out sees, and the `plain` kind is still there for it.
+- `batched.py`: every cell of a split — task, kind, seed, fold — padded
+  onto the one canvas and fitted as one `vmap` over `fixpoint.update`,
+  in chunks of about a thousand canvases on one GPU; `modal_batched.py`
+  maps the chunks and writes each task to a volume as its chunks come
+  back, from an orchestrator that outlives the sandbox that launched it.
+  Selection reads one more thing: the held-out demos' pixel accuracy
+  breaks the ties above, before fit and fewer rounds.
