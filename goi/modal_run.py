@@ -49,12 +49,12 @@ def solve(split, name):
                        for c in ranked]}
 
 
-@app.function(image=image(False), cpu=2, timeout=3600)
+@app.function(image=image(False), cpu=2, memory=2048, timeout=7200)
 def solve_cpu(split, name):
     return solve(split, name)
 
 
-@app.function(image=image(True), gpu='T4', timeout=3600)
+@app.function(image=image(True), gpu='T4', timeout=7200)
 def solve_gpu(split, name):
     return solve(split, name)
 
@@ -70,7 +70,12 @@ def main(split: str = 'training', gpu: bool = False, limit: int = 0):
     print(f'{len(names)} tasks to run, {len(done)} already done')
     function = solve_gpu if gpu else solve_cpu
     results.mkdir(parents=True, exist_ok=True)
-    for name, result in function.starmap([(split, n) for n in names]):
+    for item in function.starmap([(split, n) for n in names],
+                                 return_exceptions=True):
+        if isinstance(item, Exception):  # a timeout, reported and not fatal
+            print(f'{type(item).__name__}: {item}')
+            continue
+        name, result = item
         if 'error' in result:
             print(f'{name}: {result["error"]}')
             continue
