@@ -3,7 +3,7 @@
     modal run --detach goi/modal_batched.py --split training
         [--ports all] [--run v3] [--budget 1024] [--steps 600]
         [--kinds plain,pooled] [--limit N]
-    modal volume get goi-arc-results v3/training goi/results/v3/  # fetch
+    modal run goi/modal_batched.py --split training --get      # fetch
     python -m goi.batched --collect training                      # predictions
 
 An orchestrator container builds the jobs and their chunks from `data/`,
@@ -81,10 +81,32 @@ def orchestrate(split, ports, run, budget, steps, kinds, limit):
     print(f'{len(done)} tasks done', flush=True)
 
 
+@app.function(image=image, volumes={'/results': volume})
+def fetch(run, split, names=None):
+    """The results on the volume, by name -- as a return value rather
+    than `modal volume get`, whose storage host a sandbox may not reach."""
+    volume.reload()
+    folder = pathlib.Path('/results') / run / split
+    if names is None:
+        return sorted(p.stem for p in folder.glob('*.json'))
+    return {name: (folder / f'{name}.json').read_text() for name in names}
+
+
 @app.local_entrypoint()
 def main(split: str = 'training', ports: str = 'all', run: str = 'v3',
          budget: int = 1024, steps: int = 600, kinds: str = 'plain,pooled',
-         limit: int = 0):
+         limit: int = 0, get: bool = False):
+    if get:
+        folder = ROOT / 'goi' / 'results' / run / split
+        folder.mkdir(parents=True, exist_ok=True)
+        names = [n for n in fetch.remote(run, split)
+                 if not (folder / f'{n}.json').exists()]
+        for start in range(0, len(names), 20):
+            for name, text in fetch.remote(
+                    run, split, names[start:start + 20]).items():
+                (folder / f'{name}.json').write_text(text)
+        print(f'{len(names)} results fetched to {folder}')
+        return
     call = orchestrate.spawn(split, ports, run, budget, steps,
                              tuple(kinds.split(',')), limit)
     print(f'{run} on {split} spawned as {call.object_id}: '
