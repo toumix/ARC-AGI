@@ -1,0 +1,1 @@
+{"attempts": [[[[8, 0, 8, 0, 3], [8, 8, 8, 0, 0], [0, 0, 0, 0, 3], [0, 8, 8, 0, 0], [0, 8, 8, 0, 0]]]], "solved": true, "candidates": [{"rounds": 1, "seed": 0, "valid": 32, "demos": 4}, {"rounds": 4, "seed": 0, "valid": 32, "demos": 4}, {"rounds": 12, "seed": 0, "valid": 32, "demos": 4}]}
