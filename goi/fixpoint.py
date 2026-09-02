@@ -33,7 +33,6 @@ import numpy as np
 
 COLOURS = 10
 SIZE = 30
-DEMOS = 6
 OFFSETS = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1)
            if (dy, dx) != (0, 0)]
 FEATURES = 2 * COLOURS + len(OFFSETS) * (COLOURS + 3)
@@ -42,10 +41,10 @@ CODES = 1 + len(OFFSETS) + COLOURS
 
 def pad(pairs):
     """Demos as arrays on one canvas: input one-hots, targets, masks."""
-    x0 = np.zeros((DEMOS, SIZE, SIZE, COLOURS), np.float32)
-    target = np.zeros((DEMOS, SIZE, SIZE), np.int32)
-    valid = np.zeros((DEMOS, SIZE, SIZE), np.float32)
-    weight = np.zeros(DEMOS, np.float32)
+    x0 = np.zeros((len(pairs), SIZE, SIZE, COLOURS), np.float32)
+    target = np.zeros((len(pairs), SIZE, SIZE), np.int32)
+    valid = np.zeros((len(pairs), SIZE, SIZE), np.float32)
+    weight = np.zeros(len(pairs), np.float32)
     for k, pair in enumerate(pairs):
         grid = np.asarray(pair['input'])
         height, width = grid.shape

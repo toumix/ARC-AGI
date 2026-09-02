@@ -36,7 +36,10 @@ def solve(split, name):
     from goi import run_fixpoint, survey
     with open(survey.DATA / split / f'{name}.json') as stream:
         task = json.load(stream)
-    ranked = run_fixpoint.candidates(task)
+    try:
+        ranked = run_fixpoint.candidates(task)
+    except Exception as error:  # one task's failure is one record, not the app's
+        return name, {'error': f'{type(error).__name__}: {error}'}
     tries = run_fixpoint.attempts(ranked, task)
     return name, {
         'attempts': tries,
@@ -67,6 +70,9 @@ def main(split: str = 'training', gpu: bool = False, limit: int = 0):
     function = solve_gpu if gpu else solve_cpu
     (run_fixpoint.RESULTS / split).mkdir(parents=True, exist_ok=True)
     for name, result in function.starmap([(split, n) for n in names]):
+        if 'error' in result:
+            print(f'{name}: {result["error"]}')
+            continue
         with open(run_fixpoint.RESULTS / split / f'{name}.json', 'w') as f:
             json.dump(result, f)
         print(f'{name}: {"solved" if result["solved"] else "missed"}')
