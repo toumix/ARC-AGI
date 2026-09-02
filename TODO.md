@@ -9,7 +9,7 @@
 - [x] `goi/verify.py`: exact match on committed output grids, pass@2, before any family
 - [x] family 3 first: the neighbourhood cell iterated to a fixpoint on the grid map, families 1–2 its one-round case — 26/400 training, 2/400 evaluation
 - [x] `goi/modal_run.py`: the sweep one container per task on Modal
-- [x] the deep rounds do not fit: deep supervision, a curriculum over the rounds, two seeds, 600 steps (v2) — fits more, transfers no better; training split pending
+- [x] the deep rounds do not fit: deep supervision, a curriculum over the rounds, two seeds, 600 steps (v2) — 33/400 training, 3/400 evaluation; fits more, transfers little better
 - [x] the fit does not transfer between demos: re-arc's generators as the training distribution — 32/400, and the family's ceiling measured at 16–32 of 262
 - [ ] a cell library shared across tasks, trained on re-arc
 - [ ] the next family: a wire along rows and columns (lines, symmetries), a fold over a component (objects)

@@ -215,7 +215,10 @@ the standard library alone:
 | pass@2, exact match, 400 tasks each | training | evaluation |
 |---|---:|---:|
 | enumerated table, families 1–2 (the survey above) | 6 | 0 |
-| **learned cell, 1 / 4 / 12 rounds, family 3** | **26** | **2** |
+| **learned cell, 1 / 4 / 12 rounds, family 3** (v1) | **26** | **2** |
+| the same with deep supervision, a curriculum, two seeds (v2, below) | 33 | 3 |
+| the same fitted on re-arc's generated examples (below) | 32 | — |
+| solved by any of the three | 50 | 3 |
 | of which selected at one round | 23 | 1 |
 | best candidate fits every demo exactly | 60 | 23 |
 | best candidate passes leave-one-out on every demo | 7 | 3 |
@@ -264,12 +267,14 @@ with every result committed under `results/<run>/` and re-scored by
 fixpoint, so every round of the second half is supervised rather than
 the last alone; the 4- and 12-round cells start from the cell fitted at
 fewer rounds, a curriculum rather than a restart; 600 steps and two
-seeds per task. On the evaluation split it does what it was meant to on
-the fit side and nothing on transfer: the best candidate fits every demo
-on 48 tasks against 23, a 4- or 12-round automaton is selected on 87
-against 26, and leave-one-out still fails on 249 of 270. **3 of 400
-solved against 2**, one in common. The training split is pending at the
-time of writing.
+seeds per task. It does what it was meant to on the fit side: the best
+candidate fits every demo on 93 training tasks against 60 and on 48
+evaluation tasks against 23, and a 4- or 12-round automaton is selected
+on 96 and 87 tasks against 36 and 26. **33 of 400 training tasks solved
+against 26, 3 of 400 evaluation against 2** — 25 of the 26 kept, 8 new,
+13 of the 33 at 4 or 12 rounds where the first run had 3, and two of
+the 27 line-drawing tasks now among them. Transfer moved little:
+leave-one-out still fails on 205 of 262 and 249 of 270.
 
 **re-arc, the data lever** (`results/v2-rearc/`, `rearc.py`): the same
 cell fitted on 256 of re-arc's generated examples per task, minibatched
