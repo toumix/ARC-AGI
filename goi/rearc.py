@@ -38,12 +38,15 @@ RUN = 'v2-rearc'
 
 
 def examples(name, seed=0):
-    """A task's generated examples that fit the canvas, shuffled."""
+    """A task's generated examples that fit the canvas, shuffled -- and of
+    the family's shape: a transpose is same-size on the square grids the
+    benchmark drew and not on the rectangles the generator also draws."""
     with open(TASKS / f'{name}.json') as stream:
         pairs = [pair for pair in json.load(stream)
-                 if max(len(pair['input']), len(pair['input'][0]),
-                        len(pair['output']), len(pair['output'][0]))
-                 <= fixpoint.SIZE]
+                 if max(len(pair['input']), len(pair['input'][0]))
+                 <= fixpoint.SIZE
+                 and len(pair['input']) == len(pair['output'])
+                 and len(pair['input'][0]) == len(pair['output'][0])]
     random.Random(seed).shuffle(pairs)
     return pairs[:TRAIN], pairs[TRAIN:TRAIN + VALID]
 

@@ -29,7 +29,7 @@ image = (modal.Image.debian_slim(python_version='3.11')
          .add_local_dir(ROOT / 'data', remote_path='/root/data'))
 
 
-@app.function(image=image, cpu=2, timeout=3600)
+@app.function(image=image, cpu=2, memory=4096, timeout=3600)
 def solve(name):
     sys.path.insert(0, '/root')
     from goi import rearc
