@@ -194,3 +194,55 @@ Three more consequences, in order of leverage:
   a hand wiring in a DSL, so the family of every task can be read off
   its program, and the generators turn few-shot fitting into a training
   distribution for the cell library of stage 3.
+
+## Family 3, first numbers
+
+USER 🚀'd the reordering on 2026-09-02, so family 3 was built first:
+`fixpoint.py`, one cell per pixel reading its Moore neighbourhood
+through the quotiented interface — the centre's colour, the input's, and
+for every neighbour its colour, whether it equals the centre, is
+background or lies past the border — and writing relatively: keep the
+centre, take a neighbour's colour, or an absolute colour. The same cell
+runs at every pixel for 1, 4 or 12 rounds, soft during the fit on the
+demos and hard at test, with no learned readout. `run_fixpoint.py` fits
+the three round counts per task, selects by leave-one-demo-out, then fit,
+then fewer rounds, and writes the two best distinct predictions as the
+task's attempts; `modal_run.py` runs the same thing one container per
+task, which is how both splits were done in about an hour. Every result
+and every prediction is committed, and `verify.py` re-scores them from
+the standard library alone:
+
+| pass@2, exact match, 400 tasks each | training | evaluation |
+|---|---:|---:|
+| enumerated table, families 1–2 (the survey above) | 6 | 0 |
+| **learned cell, 1 / 4 / 12 rounds, family 3** | **26** | **2** |
+| of which selected at one round | 23 | 1 |
+| best candidate fits every demo exactly | 60 | 23 |
+| best candidate passes leave-one-out on every demo | 7 | 3 |
+| best candidate passes leave-one-out on none | 215 | 249 |
+| median pixel accuracy of the first attempt | 0.889 | 0.874 |
+
+Three readings, each marked as one:
+
+- **The learned cell beats the table four to one on the same
+  interface**, 26 against 6, and 23 of those 26 are one-round: what the
+  MLP adds is generalisation across rows no demo visited, the coverage
+  failure the survey named, not more rounds.
+- **The rounds bought almost nothing, and that is optimisation, not
+  wiring.** The 4- and 12-round automata rarely fit their own demos in
+  300 steps; the enclosed-region flood fill `00d62c1b` fits none of its
+  five. This is lesson 5 again, the basin found or not, and the lever is
+  the same as on `lcs_length`: more steps, restarts, a curriculum over
+  the rounds, and a fit that reads the map's intermediate states.
+- **The fit does not transfer between demos.** 215 of 262 best
+  candidates reproduce none of their held-out demos, on a cell of 64
+  hidden units fitted on a few thousand pixels. The table's failure was
+  rows never visited; the MLP's is rows visited once. Both say the same
+  thing about ARC: two to five demos are not a training distribution,
+  and re-arc's generators are.
+
+For calibration the evaluation number, 0.5 %, is the floor of a family
+with no object, no count and no data-dependent control in it, from
+demos alone, in a second per task; the figures #703 quotes for the
+literature are still to be re-read from their papers before they enter
+this table.
