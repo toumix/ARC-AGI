@@ -11,5 +11,5 @@
 - [x] `goi/modal_run.py`: the sweep one container per task on Modal
 - [ ] the deep rounds do not fit: more steps, restarts, a curriculum over the rounds, supervision of the map's intermediate states
 - [ ] the fit does not transfer between demos: re-arc's generators as the training distribution, a cell library shared across tasks
-- [ ] re-read #703's calibration figures (CompressARC, TRM, DSL search) from their papers before any table cites them
+- [x] re-read #703's calibration figures from their sources: TRM verified (45 % / 8 %, 7M), CompressARC unreachable here, DSL search unsourced
 - [ ] read re-arc's verifiers to label the families rather than the demos by hand

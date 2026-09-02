@@ -243,6 +243,13 @@ Three readings, each marked as one:
 
 For calibration the evaluation number, 0.5 %, is the floor of a family
 with no object, no count and no data-dependent control in it, from
-demos alone, in a second per task; the figures #703 quotes for the
-literature are still to be re-read from their papers before they enter
-this table.
+demos alone, in a second per task. Of the figures #703 quoted for the
+literature, one is verified at its source and one is not: TRM's own
+README (`SamsungSAILMontreal/TinyRecursiveModels`, arXiv:2510.04871)
+says *"45% on ARC-AGI-1 and 8% on ARC-AGI-2 with a tiny 7M parameters
+neural network"*, trained on the training set with 1,000 augmentations;
+CompressARC's README (`iliao2345/CompressARC`) gives no score, only
+*"up to 20 minutes to run, on one NVIDIA GeForce RTX 4070 GPU"* per
+task, and its paper and blog post are unreachable from this sandbox, so
+the "~34 %" of #703 stays unverified and is not in the table. The "DSL
+search ~40 %" has no source named and is dropped.
