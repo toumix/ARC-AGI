@@ -253,3 +253,48 @@ CompressARC's README (`iliao2345/CompressARC`) gives no score, only
 task, and its paper and blog post are unreachable from this sandbox, so
 the "~34 %" of #703 stays unverified and is not in the table. The "DSL
 search ~40 %" has no source named and is dropped.
+
+## Second round: the two levers pulled
+
+Both readings above were tested the same evening, each as its own run
+with every result committed under `results/<run>/` and re-scored by
+`verify.py`.
+
+**v2, the optimisation lever** (`results/v2/`): the target is a
+fixpoint, so every round of the second half is supervised rather than
+the last alone; the 4- and 12-round cells start from the cell fitted at
+fewer rounds, a curriculum rather than a restart; 600 steps and two
+seeds per task. On the evaluation split it does what it was meant to on
+the fit side and nothing on transfer: the best candidate fits every demo
+on 48 tasks against 23, a 4- or 12-round automaton is selected on 87
+against 26, and leave-one-out still fails on 249 of 270. **3 of 400
+solved against 2**, one in common. The training split is pending at the
+time of writing.
+
+**re-arc, the data lever** (`results/v2-rearc/`, `rearc.py`): the same
+cell fitted on 256 of re-arc's generated examples per task, minibatched
+with the curriculum, 32 more selecting the round count, the task's own
+demos never trained on and its test pair the score. 261 of the 262
+same-size tasks ran; one has no same-size generated example at all (a
+transpose the generator draws on rectangles). **32 of 400 solved against
+26 few-shot**, and only 15 in common: seventeen tasks are solved only
+with the training distribution, eleven only from the demos, so the
+generated distribution is wider than the benchmark's own. The number
+that matters is the ceiling it exposes: with 256 examples the best
+candidate reproduces none of its 32 validation examples on 227 of 261
+tasks, and where it reproduces all 32 it solves the test pair every
+time, 16 of 16. **Expressible by this family is 16 to 32 tasks of 262**;
+the rest is the wiring. Data does let the deep automata train, 15 of
+the 32 at 4 or 12 rounds against 3 of 26 few-shot.
+
+**What the verifiers say the wiring lacks** (`families.py`,
+`rearc_primitives.json`): re-arc carries a DSL program per training
+task, and the functions it calls label the task's family better than a
+reading of the demos. The few-shot run's 26 solved tasks call a median
+of 5 primitives against 13 for the corpus; of the same-size tasks whose
+verifier draws a line (`connect`, `shoot`), 0 of 27 are solved; of those
+using a mirror or a rotation, 1 of 37; of those using `objects`, 14 of
+163. Lines and symmetries are not local at any radius, and objects are
+local only up to their diameter. That is the next family, named: a wire
+that carries something along a row or a column, and one that folds a
+component.
