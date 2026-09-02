@@ -1,16 +1,18 @@
-"""Run `goi.batched` on Modal: one GPU per chunk of cells.
+"""Run `goi.batched` on Modal: one GPU per chunk of cells, detached.
 
-    modal run goi/modal_batched.py --split training [--ports all]
-        [--run v3] [--budget 1024] [--limit N] [--kinds plain,pooled]
+    modal run --detach goi/modal_batched.py --split training
+        [--ports all] [--run v3] [--budget 1024] [--steps 600]
+        [--kinds plain,pooled] [--limit N]
+    modal volume get goi-arc-results v3/training goi/results/v3/  # fetch
+    python -m goi.batched --collect training                      # predictions
 
-The host builds the jobs and their chunks from `data/`, the containers
-fit them (`batched.solve`) and return the hard predictions of every
-slot, and the host assembles each task's candidates and writes
-`goi/results/<run>/<split>/<task>.json` as soon as its chunks are all
-back, then `goi/predictions/<run>-<split>.json`, which `goi.verify`
-scores like any other run. A task with a result file is skipped, so a
-run resumes where it stopped. Needs `MODAL_TOKEN_ID` and
-`MODAL_TOKEN_SECRET` in the environment.
+An orchestrator container builds the jobs and their chunks from `data/`,
+maps the chunks over GPU containers (`batched.solve`), assembles each
+task's candidates as soon as its chunks are all back and writes
+`<run>/<split>/<task>.json` to the volume, which `goi/results/` mirrors
+once fetched. A task with a file on the volume is skipped, so a run
+resumes where it stopped, and the sandbox that launched it may die
+without stopping it. Needs `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`.
 """
 
 import pathlib
@@ -20,14 +22,16 @@ import modal
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 app = modal.App('goi-arc-batched')
+volume = modal.Volume.from_name('goi-arc-results', create_if_missing=True)
 image = (modal.Image.debian_slim(python_version='3.11')
          .pip_install('numpy', 'jax[cuda12]')
          .add_local_dir(ROOT / 'goi', remote_path='/root/goi',
                         ignore=['results', 'predictions', '__pycache__',
-                                'rearc']))
+                                'rearc'])
+         .add_local_dir(ROOT / 'data', remote_path='/root/data'))
 
 
-@app.function(image=image, gpu='A10G', timeout=3600)
+@app.function(image=image, gpu='A10G', timeout=7200)
 def solve(arrays, ports, steps):
     sys.path.insert(0, '/root')
     import time
@@ -37,18 +41,28 @@ def solve(arrays, ports, steps):
     return preds, time.time() - started
 
 
-@app.local_entrypoint()
-def main(split: str = 'training', ports: str = 'all', run: str = 'v3',
-         budget: int = 1024, limit: int = 0, steps: int = 600,
-         kinds: str = 'plain,pooled'):
+@app.function(image=image, timeout=24 * 3600, volumes={'/results': volume})
+def orchestrate(split, ports, run, budget, steps, kinds, limit):
+    sys.path.insert(0, '/root')
+    import json
     from goi import batched
-    kinds = tuple(kinds.split(','))
     batched.KINDS = kinds
-    write, done = batched.writer(run, split)
+    folder = pathlib.Path('/results') / run / split
+    folder.mkdir(parents=True, exist_ok=True)
+    done = {p.stem for p in folder.glob('*.json')}
+
+    def write(name, result):
+        with open(folder / f'{name}.json', 'w') as stream:
+            json.dump(result, stream)
+        volume.commit()
+        print(f'{name}: {"solved" if result["solved"] else "missed"}',
+              flush=True)
+
     tasks = batched.covered(split, limit, done)
     work = list(batched.chunks(tasks, budget, kinds))
     print(f'{len(tasks)} tasks, {len(done)} already done, '
-          f'{len(work)} chunks of {sum(len(b) for _, b in work)} cells')
+          f'{len(work)} chunks of {sum(len(b) for _, b in work)} cells',
+          flush=True)
     results = {}
     for (kind, batch), item in zip(work, solve.map(
             [batched.chunk(batch) for _, batch in work],
@@ -56,7 +70,7 @@ def main(split: str = 'training', ports: str = 'all', run: str = 'v3',
             return_exceptions=True)):
         if isinstance(item, Exception):
             print(f'{kind} chunk of {len(batch)} cells: '
-                  f'{type(item).__name__}: {item}')
+                  f'{type(item).__name__}: {item}', flush=True)
             continue
         preds, seconds = item
         print(f'{kind} chunk of {len(batch)} cells x '
@@ -64,5 +78,14 @@ def main(split: str = 'training', ports: str = 'all', run: str = 'v3',
               flush=True)
         batched.gather(results, batch, preds)
         batched.assemble(tasks, results, done, write)
-    print(f'{len(batched.collect(run, split))} tasks in '
-          f'predictions/{run}-{split}.json')
+    print(f'{len(done)} tasks done', flush=True)
+
+
+@app.local_entrypoint()
+def main(split: str = 'training', ports: str = 'all', run: str = 'v3',
+         budget: int = 1024, steps: int = 600, kinds: str = 'plain,pooled',
+         limit: int = 0):
+    call = orchestrate.spawn(split, ports, run, budget, steps,
+                             tuple(kinds.split(',')), limit)
+    print(f'{run} on {split} spawned as {call.object_id}: '
+          f'`modal app logs goi-arc-batched` follows it')

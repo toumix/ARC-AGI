@@ -1,8 +1,9 @@
 """Family 3 as one batch: every task, fold, seed and relabelling of a
 split fitted together, `vmap` over the cells, on one device.
 
-    python -m goi.batched training --limit 2 --steps 20     # smoke test
-    modal run goi/modal_batched.py --split training          # the real thing
+    python -m goi.batched training --limit 2 --steps 20      # smoke test
+    modal run --detach goi/modal_batched.py --split training  # the real thing
+    python -m goi.batched --collect training                  # predictions
 
 A *job* is one cell to fit: a task, a kind, a seed and a fold. The
 `plain` kind fits the demos as they are; the `pooled` kind fits their
@@ -25,6 +26,7 @@ import argparse
 import functools
 import json
 import pathlib
+import sys
 
 import jax
 import jax.numpy as jnp
@@ -243,12 +245,18 @@ def writer(run, split):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('split')
+    parser.add_argument('--collect', action='store_true',
+                        help='only write the predictions file from results')
     parser.add_argument('--run', default='v3')
     parser.add_argument('--ports', default='all')
     parser.add_argument('--steps', type=int, default=600)
     parser.add_argument('--budget', type=int, default=256)
     parser.add_argument('--limit', type=int, default=0)
     args = parser.parse_args()
+    if args.collect:
+        print(f'{len(collect(args.run, args.split))} tasks in '
+              f'predictions/{args.run}-{args.split}.json')
+        sys.exit()
     write, done = writer(args.run, args.split)
     tasks = covered(args.split, args.limit, done)
     results = {}
