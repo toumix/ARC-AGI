@@ -1,17 +1,15 @@
-> gather all the insights we got from CLRS to apply the GoNI framework to ARC-AGI
+> record this protocol in #3 and freeze the eval split
 
-> read this issue as context https://github.com/discopy/discopy/issues/703
+> next I want to think about how arc-dsl could help us, I've added you as collaborator here https://github.com/toumix/arc-dsl
 
-> 🚀 (USER, 2026-09-02: stage 1 starts at family 3, families 1–2 as its one-round case)
+USER's protocol, from the same turn, quoted so the boxes are read against it:
 
-- [x] gather the CLRS insights with their evidence and ARC consequence, `goi/README.md`
-- [x] survey the data for the hand-off's families, `goi/survey.py`, every number one command
-- [x] `goi/verify.py`: exact match on committed output grids, pass@2, before any family
-- [x] family 3 first: the neighbourhood cell iterated to a fixpoint on the grid map, families 1–2 its one-round case — 26/400 training, 2/400 evaluation
-- [x] `goi/modal_run.py`: the sweep one container per task on Modal
-- [x] the deep rounds do not fit: deep supervision, a curriculum over the rounds, two seeds, 600 steps (v2) — 33/400 training, 3/400 evaluation; fits more, transfers little better
-- [x] the fit does not transfer between demos: re-arc's generators as the training distribution — 32/400, and the family's ceiling measured at 16–32 of 262
-- [ ] a cell library shared across tasks, trained on re-arc
-- [ ] the next family: a wire along rows and columns (lines, symmetries), a fold over a component (objects)
-- [x] re-read #703's calibration figures from their sources: TRM verified (45 % / 8 %, 7M), CompressARC unreachable here, DSL search unsourced
-- [x] read re-arc's verifiers to label the families: `families.py`, lines 0/27, symmetry 1/37, objects 14/163 solved
+> it can be contaminated and in fact we want it to be contaminated but only by structure not by
+> pattern-matching
+
+- [x] freeze `data/evaluation`: `goi.survey` refuses it unless `GOI_UNSEAL` names the claim
+- [x] `goi/EVALUATION.md`, the ledger, opening with the four reads already spent and the one that
+      put an evaluation count in front of a design decision
+- [x] the protocol in `goi/README.md`, with ARC's own rule quoted
+- [x] record it in #3
+- [ ] read `toumix/arc-dsl` and say how it could help, as a design note for USER

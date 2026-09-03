@@ -30,6 +30,41 @@ boxes are supervised two ways: at their own boundary, from an oracle's
 recorded traffic; or end to end, through a soft relaxation of the
 routing, from the task's outputs alone.
 
+## The protocol
+
+**The evaluation split is frozen.** USER's ruling, 2026-09-03, from a
+reading this work needed: our weights cannot be contaminated, since a
+cell sees nothing but its own task's demonstrations, but the weights are
+not where the prior knowledge lives. It lives in the wiring, and the
+wiring is written by someone who has read the literature and the tasks.
+That channel is open by design and it is the point of the approach. What
+matters is what flows through it — *structure*, which is a fact about
+grids, and not *pattern*, which is a fact about a particular task.
+
+ARC's own README draws the same line, and the second half of it is the
+one we were failing:
+
+> do not leak information from the evaluation set into your algorithm
+> (e.g. by looking at the evaluation tasks yourself during development,
+> or by repeatedly modifying an algorithm while using its evaluation
+> score as feedback)
+
+So `goi.survey` now refuses `data/evaluation` unless `GOI_UNSEAL` names
+the claim being scored, and `goi/EVALUATION.md` is the ledger of every
+read, opening with the four this project already spent. Design is against
+`data/training` and re-arc's generators, whose verifiers cover the
+training split alone; the frozen split is scored once per published
+claim, and its row is added in the same commit.
+
+The discipline is affordable here for a reason worth naming. In a
+transformer the structural prior and the memorised pattern are the same
+weights and nobody can separate them. In a diagram the prior is the port
+list, which is finite and readable, so each commitment can be held up on
+its own and asked of: is this a fact about grids, or a fact about
+`00d62c1b`? A mirror port is the first. An enclosure detector would be
+the second. That audit is available to us and to nobody with a learned
+encoder.
+
 ## What CLRS taught
 
 1. **The wiring carries the algorithm and the cell never sees `n`.**
@@ -303,3 +338,147 @@ using a mirror or a rotation, 1 of 37; of those using `objects`, 14 of
 local only up to their diameter. That is the next family, named: a wire
 that carries something along a row or a column, and one that folds a
 component.
+
+## Third round: the review, and the scale
+
+USER, 2026-09-02: *"review the previous attempt at ARC-AGI and scale it
+further"*. The review first, read against the committed results rather
+than the prose; every count below is one `python` expression over
+`results/`, as of #1's head `a386759` at 21:20 UTC.
+
+**What holds.** The rays and mirrors this round adds were named by the
+previous round's own reading of the verifiers, `families.py`, so the
+wiring lesson stands as written. `verify.py` re-scores every committed
+prediction file to the number the README quotes, 26 / 2 / 3 / 32. The
+re-arc ceiling reads as claimed: the 16 tasks whose best candidate
+reproduces all 32 validation examples are solved 16 of 16, and the 17
+solved only with the training distribution against 11 only from the
+demos are exact.
+
+**What does not.**
+
+- *The training column of v2 landed at 21:30, while this was being
+  written*: 124 of 262 tasks had run when the review started, and the
+  first draft of this section called the column unfinished. It is not:
+  33 of 400, `predictions/v2-training.json`, merged in below. What
+  stands is the cost — a training split of one CPU container per task
+  took the evening.
+- *One number in the re-arc paragraph is wrong*: "reproduces none of its
+  32 validation examples on 227 of 261 tasks" — the results say **192**
+  of 261 (245 reproduce fewer than all 32, and 214 reproduce none of the
+  task's own demos, which may be the count that was meant). The
+  conclusion survives, the sentence did not.
+- *The selection is a coin toss on most tasks*: on `v1/training`, the top
+  candidate is tied with another on `(held_out, fit)` on **167 of 262**
+  tasks, and the tie is broken by fewer rounds then by seed order. So
+  for two thirds of the split the two attempts were the one-round cell of
+  seed 0 and whatever came next, whatever the automaton did on the
+  held-out pixels. The pass@2 of the first two rounds is a lower bound
+  on the family by that much.
+- *The ensemble had no data lever on the evaluation split*: re-arc has no
+  generators there, and the round said "two to five demos are not a
+  training distribution" without trying the distribution every ARC entry
+  since 2020 has used, the symmetries of the square. A task rotated is
+  the same task.
+- *`modal_run.py` ran one container per task for ten minutes on two CPUs*,
+  four hundred steps a minute. The cell is nine thousand parameters on a
+  30 × 30 canvas that every task shares; nothing in it needs its own
+  process, and a GPU fits a thousand canvases at once.
+- Smaller: `modal_run.py` records no `seconds`, so only v1's local run
+  has timings; `features` sends the cell `colours[..., :1]` twice, once
+  inside the one-hot and once as "is background" — harmless; the fold of
+  a two-demo task trains on one demo, which is what leave-one-out means
+  there, but it is why `held_out` is at most 2 on 56 training tasks.
+
+**What this round does about it**, each a file:
+
+- `fixpoint.py` gains two kinds of port beside the eight neighbours,
+  `ports = 'all'`: four *mirrors*, the pixel across the grid's horizontal,
+  vertical, central and diagonal axis (the last only on a square grid),
+  and four *rays*, the first non-background colour seen along the row or
+  column in each direction, or none — a `lax.scan` along the axis, so a
+  line reaches its end in one round rather than thirty. Same cell, same
+  quotiented reads per port (colour, past-the-border, equal to the
+  centre, background), same relative writes; the interface goes from 124
+  to 228 features and 19 to 27 codes.
+- `dihedral.py`: the eight symmetries of the square as relabellings of a
+  task, and a vote. `batched.py`'s `pooled` kind fits the eight copies of
+  the demos as one training set, holds out every copy of a demo at once,
+  and undoes the eight predictions of the test input to vote. Sound
+  exactly when the rule is symmetric — a gravity that falls down is not
+  — which leave-one-out sees, and the `plain` kind is still there for it.
+- `batched.py`: every cell of a split — task, kind, seed, fold — padded
+  onto the one canvas and fitted as one `vmap` over `fixpoint.update`,
+  in chunks of about a thousand canvases on one GPU; `modal_batched.py`
+  maps the chunks and writes each task to a volume as its chunks come
+  back, from an orchestrator that outlives the sandbox that launched it.
+  Selection reads one more thing: the held-out demos' pixel accuracy
+  breaks the ties above, before fit and fewer rounds.
+
+### The numbers
+
+Every run under `results/<run>/`, re-scored by `verify.py`; `v3` is the
+cell with all sixteen ports, `plain` and `pooled` kinds, two seeds for
+the plain; `v3-moore` is the first round's eight-port cell in its v2
+configuration on the same batched pipeline, the control that says what
+the pipeline changed on its own (nothing, within seed noise: 30 and 5
+against v2's 33 and 3).
+
+| pass@2, exact match, 400 tasks each | training | evaluation |
+|---|---:|---:|
+| v1, family 3 few-shot (#1) | 26 | 2 |
+| v2, deep supervision, curriculum, two seeds (#1) | 33 | 3 |
+| v2-rearc, fitted on the generated examples (#1) | 32 | — |
+| v3-moore, the v2 cell on the batched pipeline (the control) | 30 | 5 |
+| **v3, sixteen ports, plain + pooled** | **56** | **19** |
+| solved by any run | 76 | 20 |
+
+On the training split:
+
+- **56 against 33**: 30 tasks new to v2, 7 lost, and 26 that no
+  previous run — v1, v2 or re-arc's training distribution — had solved.
+  The verifier labels say where they came from: symmetry tasks 1 → 11
+  of 37, line tasks 2 → 5 of 27, fill and recolour without objects
+  10 → 20 of 63, objects 19 → 22 of 163. The mirror ports did what they
+  were wired for; the rays less so, five of 27 lines.
+- **The pooling carries as much as the ports.** The best held-out score
+  of a task is the pooled cell's on 131 tasks, the plain cell's on 100,
+  a tie on 31; of the 56 solved, 24 were selected from a pooled cell
+  (18 the identity copy, 6 the vote of eight). A task rotated is the
+  same task, and eight copies of three demos are a training set where
+  three were not.
+- **Leave-one-out became a signal.** The top candidate reproduces every
+  held-out demo on 36 tasks and 30 of those are solved; it reproduces
+  none on 168 (215 in v1), and 7 of those are solved anyway. The held-out
+  pixel accuracy breaks ties on all but 105 tasks, most of them with
+  nothing to choose between.
+- **Rounds are still one**: 40 of the 56 at one round, 12 at four, 4 at
+  twelve. A ray is a round of thirty in one, which is part of why.
+
+On the evaluation split, the number the literature reports:
+
+- **19 against 3**, and against the control's 5: 14 tasks no previous
+  run had solved, one of v2's lost. The training split went 33 → 56 and
+  the evaluation split 3 → 19, so what was added generalises better than
+  what was there: the mirror ports and the pooled symmetries are wiring
+  and data, and the family they extend was the part that did not travel.
+- **Selection is the weak side here.** The top candidate reproduces every
+  held-out demo on 10 tasks and 4 of those are solved, against 30 of 36
+  on training; it reproduces none on 223 of 270 and 5 of those are
+  solved anyway. Of the 19, 7 are at four rounds and 5 at twelve, where
+  training had 12 and 4 of 56: the evaluation tasks this family reaches
+  are the deeper ones, and fit them it does — the best candidate fits
+  every demo on 74 tasks — without a signal that says which fit to trust.
+- **The pooled cell is the better candidate on 134 tasks, the plain on
+  124**, a tie on 12; 11 of the 19 came from a pooled cell, 4 of them
+  the vote. The `plain` kind earns its place on the other 8.
+
+What this round did not touch, and the next one should: the cell library
+across tasks on re-arc's generators (the one lever that moved training
+without the demos, untried with the new ports), a fold over a component
+(objects are 163 of the 262 same-size training tasks and 22 are solved),
+and the rays as they are — 5 of 27 line tasks, where the mirrors took 11
+of 37 symmetry tasks — which says a ray that reports one colour at an
+unknown distance is not yet the wire a line needs. Every number above is
+`python -m goi.verify goi/predictions/v3-*.json` and `python -m
+goi.families v3 v3-moore`; the runs cost about thirty A10G-hours.
