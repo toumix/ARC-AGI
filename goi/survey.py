@@ -43,6 +43,7 @@ Three numbers per encoding and radius:
 
 import collections
 import json
+import os
 import pathlib
 import sys
 
@@ -51,8 +52,30 @@ RADII = (0, 1, 2, 3)
 ENCODINGS = ('raw', 'rel', 'count')
 BACKGROUND, BORDER = 0, -1
 
+#: The split that is frozen: read only to score a claim, never while a
+#: design decision is open. `EVALUATION.md` is the ledger of every score.
+FROZEN = 'evaluation'
+
+#: The environment variable that unseals it, naming the claim being scored.
+UNSEAL = 'GOI_UNSEAL'
+
+SEALED = f"""The {FROZEN} split is frozen. ARC's own README says not to \
+leak it into an algorithm "by repeatedly modifying an algorithm while \
+using its evaluation score as feedback", which is what the first three \
+rounds did. Design against `training` and re-arc; when a claim is ready \
+to be scored, set {UNSEAL} to the claim it is for and add the score to \
+goi/EVALUATION.md, so that the reads stay counted."""
+
+
+def unsealed():
+    """The claim the frozen split is being scored for, or nothing."""
+    return os.environ.get(UNSEAL)
+
 
 def tasks(split):
+    """The tasks of a split, refusing the frozen one unless unsealed."""
+    if split == FROZEN and not unsealed():
+        raise RuntimeError(SEALED)
     for path in sorted((DATA / split).glob('*.json')):
         with open(path) as stream:
             yield path.stem, json.load(stream)

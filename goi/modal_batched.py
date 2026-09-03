@@ -2,7 +2,7 @@
 
     modal run --detach goi/modal_batched.py --split training
         [--ports all] [--run v3] [--budget 1024] [--steps 600]
-        [--kinds plain,pooled] [--limit N]
+        [--kinds plain,pooled] [--limit N] [--unseal "<claim>"]
     modal run goi/modal_batched.py --split training --get      # fetch
     python -m goi.batched --collect training                      # predictions
 
@@ -19,6 +19,9 @@ import pathlib
 import sys
 
 import modal
+
+#: Named rather than imported, the orchestrator setting it before `goi` loads.
+SURVEY_UNSEAL = 'GOI_UNSEAL'
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 app = modal.App('goi-arc-batched')
@@ -42,9 +45,11 @@ def solve(arrays, ports, steps):
 
 
 @app.function(image=image, timeout=24 * 3600, volumes={'/results': volume})
-def orchestrate(split, ports, run, budget, steps, kinds, limit):
+def orchestrate(split, ports, run, budget, steps, kinds, limit, unseal):
     sys.path.insert(0, '/root')
     import json
+    import os
+    os.environ[SURVEY_UNSEAL] = unseal
     from goi import batched
     batched.KINDS = kinds
     folder = pathlib.Path('/results') / run / split
@@ -95,7 +100,7 @@ def fetch(run, split, names=None):
 @app.local_entrypoint()
 def main(split: str = 'training', ports: str = 'all', run: str = 'v3',
          budget: int = 1024, steps: int = 600, kinds: str = 'plain,pooled',
-         limit: int = 0, get: bool = False):
+         limit: int = 0, get: bool = False, unseal: str = ''):
     if get:
         folder = ROOT / 'goi' / 'results' / run / split
         folder.mkdir(parents=True, exist_ok=True)
@@ -108,6 +113,6 @@ def main(split: str = 'training', ports: str = 'all', run: str = 'v3',
         print(f'{len(names)} results fetched to {folder}')
         return
     call = orchestrate.spawn(split, ports, run, budget, steps,
-                             tuple(kinds.split(',')), limit)
+                             tuple(kinds.split(',')), limit, unseal)
     print(f'{run} on {split} spawned as {call.object_id}: '
           f'`modal app logs goi-arc-batched` follows it')

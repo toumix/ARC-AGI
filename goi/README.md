@@ -30,6 +30,41 @@ boxes are supervised two ways: at their own boundary, from an oracle's
 recorded traffic; or end to end, through a soft relaxation of the
 routing, from the task's outputs alone.
 
+## The protocol
+
+**The evaluation split is frozen.** USER's ruling, 2026-09-03, from a
+reading this work needed: our weights cannot be contaminated, since a
+cell sees nothing but its own task's demonstrations, but the weights are
+not where the prior knowledge lives. It lives in the wiring, and the
+wiring is written by someone who has read the literature and the tasks.
+That channel is open by design and it is the point of the approach. What
+matters is what flows through it — *structure*, which is a fact about
+grids, and not *pattern*, which is a fact about a particular task.
+
+ARC's own README draws the same line, and the second half of it is the
+one we were failing:
+
+> do not leak information from the evaluation set into your algorithm
+> (e.g. by looking at the evaluation tasks yourself during development,
+> or by repeatedly modifying an algorithm while using its evaluation
+> score as feedback)
+
+So `goi.survey` now refuses `data/evaluation` unless `GOI_UNSEAL` names
+the claim being scored, and `goi/EVALUATION.md` is the ledger of every
+read, opening with the four this project already spent. Design is against
+`data/training` and re-arc's generators, whose verifiers cover the
+training split alone; the frozen split is scored once per published
+claim, and its row is added in the same commit.
+
+The discipline is affordable here for a reason worth naming. In a
+transformer the structural prior and the memorised pattern are the same
+weights and nobody can separate them. In a diagram the prior is the port
+list, which is finite and readable, so each commitment can be held up on
+its own and asked of: is this a fact about grids, or a fact about
+`00d62c1b`? A mirror port is the first. An enclosure detector would be
+the second. That audit is available to us and to nobody with a learned
+encoder.
+
 ## What CLRS taught
 
 1. **The wiring carries the algorithm and the cell never sees `n`.**
