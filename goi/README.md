@@ -386,20 +386,19 @@ Every run under `results/<run>/`, re-scored by `verify.py`; `v3` is the
 cell with all sixteen ports, `plain` and `pooled` kinds, two seeds for
 the plain; `v3-moore` is the first round's eight-port cell in its v2
 configuration on the same batched pipeline, the control that says what
-the pipeline changed on its own (nothing, within seed noise: 28 against
-v2's 31 on the same 236 tasks).
+the pipeline changed on its own (nothing, within seed noise: 30 and 5
+against v2's 33 and 3).
 
 | pass@2, exact match, 400 tasks each | training | evaluation |
 |---|---:|---:|
 | v1, family 3 few-shot (#1) | 26 | 2 |
 | v2, deep supervision, curriculum, two seeds (#1) | 33 | 3 |
 | v2-rearc, fitted on the generated examples (#1) | 32 | — |
-| v3-moore, the v2 cell on the batched pipeline | 28 of 236 | *running* |
-| **v3, sixteen ports, plain + pooled** | **56** | *running* |
-| solved by any run | 76 | |
+| v3-moore, the v2 cell on the batched pipeline (the control) | 30 | 5 |
+| **v3, sixteen ports, plain + pooled** | **56** | **19** |
+| solved by any run | 76 | 20 |
 
-On the training split, read as of 00:30 UTC with the evaluation runs
-still going:
+On the training split:
 
 - **56 against 33**: 30 tasks new to v2, 7 lost, and 26 that no
   previous run — v1, v2 or re-arc's training distribution — had solved.
@@ -420,3 +419,31 @@ still going:
   nothing to choose between.
 - **Rounds are still one**: 40 of the 56 at one round, 12 at four, 4 at
   twelve. A ray is a round of thirty in one, which is part of why.
+
+On the evaluation split, the number the literature reports:
+
+- **19 against 3**, and against the control's 5: 14 tasks no previous
+  run had solved, one of v2's lost. The training split went 33 → 56 and
+  the evaluation split 3 → 19, so what was added generalises better than
+  what was there: the mirror ports and the pooled symmetries are wiring
+  and data, and the family they extend was the part that did not travel.
+- **Selection is the weak side here.** The top candidate reproduces every
+  held-out demo on 10 tasks and 4 of those are solved, against 30 of 36
+  on training; it reproduces none on 223 of 270 and 5 of those are
+  solved anyway. Of the 19, 7 are at four rounds and 5 at twelve, where
+  training had 12 and 4 of 56: the evaluation tasks this family reaches
+  are the deeper ones, and fit them it does — the best candidate fits
+  every demo on 74 tasks — without a signal that says which fit to trust.
+- **The pooled cell is the better candidate on 134 tasks, the plain on
+  124**, a tie on 12; 11 of the 19 came from a pooled cell, 4 of them
+  the vote. The `plain` kind earns its place on the other 8.
+
+What this round did not touch, and the next one should: the cell library
+across tasks on re-arc's generators (the one lever that moved training
+without the demos, untried with the new ports), a fold over a component
+(objects are 163 of the 262 same-size training tasks and 22 are solved),
+and the rays as they are — 5 of 27 line tasks, where the mirrors took 11
+of 37 symmetry tasks — which says a ray that reports one colour at an
+unknown distance is not yet the wire a line needs. Every number above is
+`python -m goi.verify goi/predictions/v3-*.json` and `python -m
+goi.families v3 v3-moore`; the runs cost about thirty A10G-hours.
