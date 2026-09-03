@@ -379,3 +379,44 @@ demos are exact.
   back, from an orchestrator that outlives the sandbox that launched it.
   Selection reads one more thing: the held-out demos' pixel accuracy
   breaks the ties above, before fit and fewer rounds.
+
+### The numbers
+
+Every run under `results/<run>/`, re-scored by `verify.py`; `v3` is the
+cell with all sixteen ports, `plain` and `pooled` kinds, two seeds for
+the plain; `v3-moore` is the first round's eight-port cell in its v2
+configuration on the same batched pipeline, the control that says what
+the pipeline changed on its own (nothing, within seed noise: 28 against
+v2's 31 on the same 236 tasks).
+
+| pass@2, exact match, 400 tasks each | training | evaluation |
+|---|---:|---:|
+| v1, family 3 few-shot (#1) | 26 | 2 |
+| v2, deep supervision, curriculum, two seeds (#1) | 33 | 3 |
+| v2-rearc, fitted on the generated examples (#1) | 32 | — |
+| v3-moore, the v2 cell on the batched pipeline | 28 of 236 | *running* |
+| **v3, sixteen ports, plain + pooled** | **56** | *running* |
+| solved by any run | 76 | |
+
+On the training split, read as of 00:30 UTC with the evaluation runs
+still going:
+
+- **56 against 33**: 30 tasks new to v2, 7 lost, and 26 that no
+  previous run — v1, v2 or re-arc's training distribution — had solved.
+  The verifier labels say where they came from: symmetry tasks 1 → 11
+  of 37, line tasks 2 → 5 of 27, fill and recolour without objects
+  10 → 20 of 63, objects 19 → 22 of 163. The mirror ports did what they
+  were wired for; the rays less so, five of 27 lines.
+- **The pooling carries as much as the ports.** The best held-out score
+  of a task is the pooled cell's on 131 tasks, the plain cell's on 100,
+  a tie on 31; of the 56 solved, 24 were selected from a pooled cell
+  (18 the identity copy, 6 the vote of eight). A task rotated is the
+  same task, and eight copies of three demos are a training set where
+  three were not.
+- **Leave-one-out became a signal.** The top candidate reproduces every
+  held-out demo on 36 tasks and 30 of those are solved; it reproduces
+  none on 168 (215 in v1), and 7 of those are solved anyway. The held-out
+  pixel accuracy breaks ties on all but 105 tasks, most of them with
+  nothing to choose between.
+- **Rounds are still one**: 40 of the 56 at one round, 12 at four, 4 at
+  twelve. A ray is a round of thirty in one, which is part of why.
